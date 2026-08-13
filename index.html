@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Journal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --primary-glow: rgba(59, 130, 246, 0.2);
+            --primary-text: #60a5fa;
+            --bg-color: #0f172a;
+            --win-color: #10b981;
+            --loss-color: #f43f5e;
+        }
+        body.light-mode {
+            --bg-color: #ffffff;
+            --text-color: #1f2937;
+            --card-bg: rgba(243, 244, 246, 0.8);
+            --border-color: rgba(0, 0, 0, 0.1);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: #f1f5f9;
+            transition: background-color 0.3s ease;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            letter-spacing: -0.025em;
+        }
+        body.light-mode {
+            color: #1f2937;
+        }
+        .glass {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+        }
+        body.light-mode .glass {
+            background: rgba(243, 244, 246, 0.8);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05), 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+        }
+        .bento-card {
+            transition: all 300ms ease-out;
+        }
+        .bento-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border-color: rgba(96, 165, 250, 0.3);
+        }
+        .bento-card:active {
+            transform: scale(0.98);
+        }
+        .border-glow {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+        }
+        .border-glow:hover {
+            border-color: rgba(96, 165, 250, 0.3);
+        }
+        .nav-item.active {
+            background: var(--primary-glow);
+            color: var(--primary-text);
+            border-right: 4px solid var(--primary-color);
+        }
+        input, select, textarea {
+            background: rgba(15, 23, 42, 0.6) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: white !important;
+            border-radius: 0.5rem !important;
+        }
+        body.light-mode input, body.light-mode select, body.light-mode textarea {
+            background: rgba(255, 255, 255, 0.9) !important;
+            color: #1f2937 !important;
+            border: 1px solid rgba(0, 0, 0, 0.1) !important;
+        }
+        .trade-card:hover {
+            transform: translateY(-2px);
+            transition: all 0.2s ease;
+        }
+        .theme-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor-pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .theme-btn.active {
+            border-color: white;
+            transform: scale(1.2);
+        }
+        .color-picker-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .color-input {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: none;
+        }
+    </style>
+</head>
+<body class="grid grid-cols-[280px_1fr] h-screen overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="h-full glass flex flex-col justify-between border-r border-slate-800">
+        <div class="p-6">
+            <h1 id="app-title" class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
+                Apex Journal
+            </h1>
+        </div>
+
+        <div class="flex-1 flex flex-col justify-center px-4 space-y-8">
+            <nav class="space-y-2">
+                <button onclick="showPage('dashboard')" id="nav-dashboard" class="nav-item active w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:bg-slate-800">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    <span class="font-medium">Dashboard</span>
+                </button>
+                <button onclick="showPage('journal')" id="nav-journal" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:bg-slate-800">
+                    <i data-lucide="book-open" class="w-5 h-5"></i>
+                    <span class="font-medium">Journal</span>
+                </button>
+                <button onclick="showPage('calendar')" id="nav-calendar" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:bg-slate-800">
+                    <i data-lucide="calendar" class="w-5 h-5"></i>
+                    <span class="font-medium">Calendar</span>
+                </button>
+                <button onclick="showPage('settings')" id="nav-settings" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all hover:bg-slate-800">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                    <span class="font-medium">Settings</span>
+                </button>
+            </nav>
+
+            <!-- Trading Mantra Box -->
+            <div class="p-4 rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-500/10 to-transparent shadow-[0_0_15px_rgba(59,130,246,0.1)]">
+                <p id="sidebar-mantra" class="text-xs italic text-slate-300 leading-relaxed text-center">
+                    "The goal of a successful trader is to make the best trades. Money is secondary."
+                </p>
+            </div>
+        </div>
+
+        <div class="p-4 border-t border-slate-800">
+            <div class="glass p-3 rounded-xl text-xs text-slate-400 flex items-center gap-2">
+                <i data-lucide="database" class="w-3 h-3"></i>
+                Local Storage Active
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="h-full overflow-hidden relative p-8">
+
+        <!-- Dashboard Page -->
+        <div id="page-dashboard" class="page space-y-8 h-full flex flex-col">
+            <header class="flex justify-between items-center">
+                <div class="space-y-2">
+                    <h2 class="text-3xl font-bold text-slate-100">Performance Overview</h2>
+                    <div id="dashboard-quote" class="text-slate-400 italic text-lg max-w-md border-l-2 border-blue-500 pl-4">
+                        "The goal of a successful trader is to make the best trades. Money is secondary."
+                    </div>
+                </div>
+                <div class="flex gap-4">
+                    <div class="glass px-4 py-2 rounded-lg text-sm border-glow">
+                        <span class="text-slate-400">Current Month:</span>
+                        <span id="stat-month-pnl" class="font-bold ml-1 text-slate-100">0%</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Bento Grid -->
+            <div class="grid grid-cols-4 gap-6 flex-1">
+                <!-- Row 1: KPI tiles -->
+                <div class="bento-card glass p-6 rounded-2xl flex flex-col gap-2 border-glow">
+                    <div class="flex justify-between items-start">
+                        <span class="text-slate-400 text-sm font-medium">Avg Win Rate</span>
+                        <i data-lucide="trending-up" class="w-5 h-5 text-emerald-400"></i>
+                    </div>
+                    <div class="text-4xl font-bold text-slate-100" id="stat-winrate">0%</div>
+                    <div class="text-xs text-slate-500" id="stat-trade-count">0 trades analyzed</div>
+                </div>
+                <div class="bento-card glass p-6 rounded-2xl flex flex-col gap-2 border-glow">
+                    <div class="flex justify-between items-start">
+                        <span class="text-slate-400 text-sm font-medium">Avg Risk:Reward</span>
+                        <i data-lucide="scale" class="w-5 h-5 text-blue-400"></i>
+                    </div>
+                    <div class="text-4xl font-bold text-slate-100" id="stat-avgrr">0.00</div>
+                    <div class="text-xs text-slate-500">Based on winning trades</div>
+                </div>
+                <div class="bento-card glass p-6 rounded-2xl flex flex-col gap-2 border-glow">
+                    <div class="flex justify-between items-start">
+                        <span class="text-slate-400 text-sm font-medium">Monthly PnL</span>
+                        <i data-lucide="calendar-days" class="w-5 h-5 text-blue-400"></i>
+                    </div>
+                    <div class="text-4xl font-bold text-slate-100" id="stat-monthlypnl">0%</div>
+                    <div class="text-xs text-slate-500">Current month performance</div>
+                </div>
+                <div class="bento-card glass p-6 rounded-2xl flex flex-col gap-2 border-glow">
+                    <div class="flex justify-between items-start">
+                        <div class="flex flex-col gap-1">
+                            <span class="text-slate-400 text-sm font-medium">Total Profit/Loss</span>
+                        </div>
+                        <i data-lucide="wallet" class="w-5 h-5 text-purple-400"></i>
+                    </div>
+                    <div class="text-4xl font-bold text-slate-100" id="stat-totalpnl">0%</div>
+                    <div class="text-xs text-slate-500" id="stat-pnl-period-label">All time cumulative</div>
+                </div>
+
+                <!-- Row 2: Goal Tracker (Full Width) -->
+                <div class="col-span-4 bento-card glass p-8 rounded-2xl border-glow flex flex-col justify-between">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 id="goal-header" class="text-xl font-semibold text-slate-100 flex items-center gap-2">
+                            <i data-lucide="target" class="w-6 h-6 text-rose-400"></i> Monthly Goal Progress
+                        </h3>
+                        <span id="goal-percentage" class="text-lg font-bold text-rose-400">0%</span>
+                    </div>
+                    <div class="relative h-6 bg-slate-800 rounded-full overflow-hidden border border-white/5">
+                        <div id="goal-progress" class="absolute left-0 top-0 h-full bg-gradient-to-r from-rose-500 to-orange-400 transition-all duration-1000" style="width: 0%"></div>
+                    </div>
+                    <div class="flex justify-between items-center mt-4">
+                        <span class="text-sm text-slate-400">Current PnL: <span id="goal-current" class="text-slate-100 font-medium">0%</span></span>
+                        <span class="text-sm text-slate-400">Target: <span id="goal-target" class="text-slate-100 font-medium">10%</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 4: Quick Glance Bar (4x1) -->
+            <div class="h-16 glass rounded-2xl border-glow flex items-center justify-between px-6 gap-4 overflow-hidden">
+                <div class="flex items-center gap-6">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-slate-500 uppercase font-semibold tracking-wider">Today's PnL</span>
+                        <span id="glance-today-pnl" class="text-sm font-bold text-slate-100">0%</span>
+                    </div>
+                    <div class="flex items-center gap-2 border-l border-slate-700 pl-6">
+                        <span class="text-xs text-slate-500 uppercase font-semibold tracking-wider">Streak</span>
+                        <span id="glance-streak" class="text-sm font-bold text-slate-100">0 W / 0 L</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 text-slate-400">
+                    <i data-lucide="clock" class="w-4 h-4"></i>
+                    <span id="glance-session" class="text-xs font-medium">Session: 0m 0s</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Journal Page -->
+        <div id="page-journal" class="page hidden h-full flex flex-col gap-8">
+            <header class="flex justify-between items-center">
+                <div class="space-y-1">
+                    <h2 class="text-3xl font-bold text-slate-100">Trading Journal</h2>
+                    <p class="text-slate-400">Log your trades and analyze your edge</p>
+                </div>
+                <button onclick="toggleModal(true)" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl font-semibold flex items-center gap-2 transition-all border-glow" id="btn-new-trade">
+                    <i data-lucide="plus" class="w-5 h-5"></i>
+                    New Trade
+                </button>
+                <button onclick="document.getElementById('import-file').click()" class="bg-slate-700 hover:bg-slate-600 text-white px-6 py-2 rounded-xl font-semibold flex items-center gap-2 transition-all border-glow">
+                    <i data-lucide="upload" class="w-5 h-5"></i>
+                    Import Excel/CSV
+                </button>
+            </header>
+            <input type="file" id="import-file" accept=".csv, .xlsx, .xls" style="display:none" onchange="handleImport(this)">
+
+
+            <div class="grid grid-cols-12 gap-8 flex-1 overflow-hidden">
+                <!-- Main Journal Content (9 cols) -->
+                <div class="col-span-9 overflow-y-auto pr-2 space-y-4" id="trade-list-container">
+                    <div class="grid grid-cols-1 gap-4" id="trade-list"></div>
+                </div>
+
+                <!-- Insights/Quick-Stats Panel (3 cols) -->
+                <div class="col-span-3 space-y-6">
+                    <div class="bento-card glass p-6 rounded-2xl border-glow space-y-4">
+                        <h3 class="text-lg font-semibold text-slate-100 flex items-center gap-2">
+                            <i data-lucide="zap" class="w-5 h-5 text-amber-400"></i> Quick Stats
+                        </h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center p-3 rounded-xl bg-slate-800/50 border border-white/5">
+                                <span class="text-xs text-slate-400">Total Trades</span>
+                                <span id="insight-total-trades" class="text-sm font-bold text-slate-100">0</span>
+                            </div>
+                            <div class="flex justify-between items-center p-3 rounded-xl bg-slate-800/50 border border-white/5">
+                                <span class="text-xs text-slate-400">Win Rate</span>
+                                <span id="insight-winrate" class="text-sm font-bold text-slate-100">0%</span>
+                            </div>
+                            <div class="flex justify-between items-center p-3 rounded-xl bg-slate-800/50 border border-white/5">
+                                <span class="text-xs text-slate-400">Avg RR</span>
+                                <span id="insight-avgrr" class="text-sm font-bold text-slate-100">0.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bento-card glass p-6 rounded-2xl border-glow space-y-4">
+                        <h3 class="text-lg font-semibold text-slate-100 flex items-center gap-2">
+                            <i data-lucide="trending-up" class="w-5 h-5 text-emerald-400"></i> Top Pair
+                        </h3>
+                        <div id="insight-top-pair" class="text-center py-4">
+                            <div class="text-2xl font-bold text-slate-100">---</div>
+                            <div class="text-xs text-slate-500">Most traded pair</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calendar Page -->
+        <div id="page-calendar" class="page hidden h-full flex flex-col gap-8">
+            <header class="flex justify-between items-center">
+                <div class="space-y-1">
+                    <h2 class="text-3xl font-bold text-slate-100">Trading Calendar</h2>
+                    <p class="text-slate-400">Visual representation of your activity</p>
+                </div>
+                <div class="flex items-center gap-4 glass px-4 py-2 rounded-lg border-glow">
+                    <button onclick="changeMonth(-1)" class="p-1 hover:bg-slate-700 rounded transition-all"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+
+                    <div class="flex gap-2">
+                        <select id="calendar-month-select" onchange="jumpToDate(this.value, document.getElementById('calendar-year-select').value)" class="p-1 text-xs rounded outline-none bg-slate-800 text-white">
+                            <option value="0">January</option>
+                            <option value="1">February</option>
+                            <option value="2">March</option>
+                            <option value="3">April</option>
+                            <option value="4">May</option>
+                            <option value="5">June</option>
+                            <option value="6">July</option>
+                            <option value="7">August</option>
+                            <option value="8">September</option>
+                            <option value="9">October</option>
+                            <option value="10">November</option>
+                            <option value="11">December</option>
+                        </select>
+                        <select id="calendar-year-select" onchange="jumpToDate(document.getElementById('calendar-month-select').value, this.value)" class="p-1 text-xs rounded outline-none bg-slate-800 text-white">
+                            <!-- Years will be populated by JS -->
+                        </select>
+                    </div>
+
+                    <button onclick="changeMonth(1)" class="p-1 hover:bg-slate-700 rounded transition-all"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
+                </div>
+            </header>
+
+            <div class="grid grid-cols-12 gap-8 flex-1 overflow-hidden">
+                <!-- Main Calendar Content (12 cols) -->
+                <div class="col-span-12 overflow-y-auto pr-2">
+                    <div class="glass p-6 rounded-2xl border-glow">
+                        <div class="grid grid-cols-7 gap-2 mb-4 text-center text-slate-400 text-sm font-medium">
+                            <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                        </div>
+                        <div id="calendar-grid" class="grid grid-cols-7 gap-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Page -->
+        <div id="page-settings" class="page hidden space-y-8">
+            <header>
+                <h2 class="text-3xl font-bold">Settings</h2>
+                <p class="text-slate-400">Customize your trading experience</p>
+            </header>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Visual Identity -->
+                <div class="glass p-6 rounded-2xl space-y-6">
+                    <h3 class="text-xl font-semibold flex items-center gap-2">
+                        <i data-lucide="palette" class="w-5 h-5"></i> Visual Identity
+                    </h3>
+
+                    <div class="space-y-4">
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-slate-400">Theme Presets</label>
+                            <div class="flex gap-4" id="theme-options">
+                                <button onclick="setTheme('blue')" class="theme-option-btn flex items-center gap-2 px-3 py-2 rounded-lg glass hover:bg-slate-700 transition-all">
+                                    <div class="theme-btn active" style="background: #3b82f6;"></div>
+                                    <span class="text-xs">Ocean Blue</span>
+                                </button>
+                                <button onclick="setTheme('emerald')" class="theme-option-btn flex items-center gap-2 px-3 py-2 rounded-lg glass hover:bg-slate-700 transition-all">
+                                    <div class="theme-btn" style="background: #10b981;"></div>
+                                    <span class="text-xs">Forest Emerald</span>
+                                </button>
+                                <button onclick="setTheme('purple')" class="theme-option-btn flex items-center gap-2 px-3 py-2 rounded-lg glass hover:bg-slate-700 transition-all">
+                                    <div class="theme-btn" style="background: #8b5cf6;"></div>
+                                    <span class="text-xs">Royal Purple</span>
+                                </button>
+                                <button onclick="setTheme('rose')" class="theme-option-btn flex items-center gap-2 px-3 py-2 rounded-lg glass hover:bg-slate-700 transition-all">
+                                    <div class="theme-btn" style="background: #f43f5e;"></div>
+                                    <span class="text-xs">Sunset Rose</span>
+                                </button>
+                                <button onclick="setTheme('amber')" class="theme-option-btn flex items-center gap-2 px-3 py-2 rounded-lg glass hover:bg-slate-700 transition-all">
+                                    <div class="theme-btn" style="background: #f59e0b;"></div>
+                                    <span class="text-xs">Golden Amber</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-slate-400">Custom Primary Color</label>
+                            <div class="color-picker-wrapper">
+                                <input type="color" id="custom-color" oninput="setCustomTheme(this.value)" class="color-input">
+                                <span id="primary-hex" class="text-xs font-mono text-slate-500">#3b82f6</span>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-slate-400">Background Color</label>
+                            <div class="color-picker-wrapper">
+                                <input type="color" id="custom-bg" oninput="setCustomBg(this.value)" class="color-input">
+                                <span id="bg-hex" class="text-xs font-mono text-slate-500">#0f172a</span>
+                            </div>
+                        </div>
+                        <!-- Interface Mode Toggle -->
+                        <div class="flex items-center justify-between p-3 rounded-lg glass">
+                            <span class="text-sm font-medium text-slate-400">Interface Mode</span>
+                            <button onclick="toggleMode()" id="mode-toggle" class="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 transition-all">
+                                <i data-lucide="sun" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Personalization -->
+                <div class="glass p-6 rounded-2xl space-y-6">
+                    <h3 class la-xl font-semibold flex items-center gap-2">
+                        <i data-lucide="user" class="w-5 h-5"></i> Personalization
+                    </h3>
+
+                    <div class="space-y-4">
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-slate-400">Journal Name</label>
+                            <input type="text" id="set-app-name" class="w-full p-3 rounded-lg outline-none" placeholder="e.g. My Trading Edge">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-slate-400">Daily Quote / Mantra</label>
+                            <textarea id="set-app-quote" rows="3" class="w-full p-3 rounded-lg outline-none" placeholder="Enter your favorite trading quote..."></textarea>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-slate-400">Default PnL Period</label>
+                            <select id="set-default-pnl-period" class="w-full p-3 rounded-lg outline-none">
+                                <option value="daily">Daily</option>
+                                <option value="all">All Time</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="yearly">Yearly</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+
+
+                <!-- Goal Settings -->
+                <div class="glass p-6 rounded-2xl space-y-6">
+                    <h3 class="text-xl font-semibold flex items-center gap-2">
+                        <i data-lucide="target" class="w-5 h-5"></i> Goal Settings
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-slate-400">Goal Target (%)</label>
+                            <input type="number" id="set-goal-target" step="0.1" class="w-full p-3 rounded-lg outline-none" placeholder="e.g. 10">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-slate-400">Goal Period</label>
+                            <select id="set-goal-period" class="w-full p-3 rounded-lg outline-none">
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly" selected>Monthly</option>
+                                <option value="yearly">Yearly</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Layouts -->
+                <div class="glass p-6 rounded-2xl space-y-6">
+                    <h3 class="text-xl font-semibold flex items-center gap-2">
+                        <i data-lucide="layout" class="w-5 h-5"></i> My Layouts
+                    </h3>
+                    <div class="flex gap-3">
+                        <input type="text" id="layout-name" placeholder="Layout Name..." class="flex-1 p-3 rounded-lg outline-none">
+                        <button onclick="saveLayout()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-semibold transition-all">
+                            Save
+                        </button>
+                    </div>
+                    <div id="layouts-list" class="space-y-3">
+                        <!-- Layouts injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end items-center pt-6 gap-4">
+                <button onclick="importMohamData()" class="text-blue-400 hover:text-blue-300 text-sm font-medium flex items-center gap-2 transition-all">
+                    <i data-lucide="download" class="w-4 h-4"></i> Restore My Excel Data
+                </button>
+                <button onclick="clearAllData()" class="text-rose-400 hover:text-rose-300 text-sm font-medium flex items-center gap-2 transition-all">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i> Clear All Data
+                </button>
+                <button onclick="resetTrades()" class="text-amber-400 hover:text-amber-300 text-sm font-medium flex items-center gap-2 transition-all">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Reset Trades Only
+                </button>
+                <button onclick="saveSettings()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-semibold transition-all" id="btn-save-settings">
+                    Save All Customizations
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Trade Details Modal -->
+    <div id="modal-trade-details" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass w-full max-w-2xl rounded-3xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-6 border-b border-slate-800 flex justify-between items-center">
+                <h3 class="text-xl font-bold">Trade Details</h3>
+                <button onclick="toggleDetailsModal(false)" class="p-2 hover:bg-slate-800 rounded-full transition-all">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto space-y-6">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="space-y-1">
+                        <span class="text-xs text-slate-500 uppercase font-semibold">Pair</span>
+                        <div id="det-pair" class="font-bold text-lg"></div>
+                    </div>
+                    <div class="space-y-1">
+                        <span class="text-xs text-slate-500 uppercase font-semibold">Date</span>
+                        <div id="det-date" class="font-medium"></div>
+                    </div>
+                    <div class="space-y-1">
+                        <span class="text-xs text-slate-500 uppercase font-semibold">Outcome</span>
+                        <div id="det-outcome" class="font-medium"></div>
+                    </div>
+                    <div class="space-y-1">
+                        <span class="text-xs text-slate-500 uppercase font-semibold">Bias</span>
+                        <div id="det-bias" class="font-medium"></div>
+                    </div>
+                    <div class="space-y-1">
+                        <span class="text-xs text-slate-500 uppercase font-semibold">PnL</span>
+                        <div id="det-pnl" class="font-bold"></div>
+                    </div>
+                    <div class="space-y-1">
+                        <span class="text-xs text-slate-500 uppercase font-semibold">Pips</span>
+                        <div id="det-pips" class="font-medium"></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <span class="text-xs text-slate-500 uppercase font-semibold">RR Ratio</span>
+                        <div id="det-rr" class="font-medium"></div>
+                    </div>
+                    <div class="space-y-1">
+                        <span class="text-xs text-slate-500 uppercase font-semibold">TPs Hit</span>
+                        <div id="det-tps" class="font-medium"></div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <span class="text-xs text-slate-500 uppercase font-semibold">Confluences</span>
+                    <div id="det-confluences" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <div class="space-y-2">
+                    <span class="text-xs text-slate-500 uppercase font-semibold">Notes</span>
+                    <div id="det-notes" class="p-4 rounded-lg glass text-sm leading-relaxed whitespace-pre-wrap"></div>
+                </div>
+
+                <div class="space-y-2">
+                    <span class="text-xs text-slate-500 uppercase font-semibold">Psychology / Feeling</span>
+                    <div id="det-feeling" class="p-4 rounded-lg glass text-sm leading-relaxed whitespace-pre-wrap"></div>
+                </div>
+
+                <div class="space-y-3">
+                    <span class="text-xs text-slate-500 uppercase font-semibold">Screenshots</span>
+                    <div id="det-screenshots" class="grid grid-cols-2 md:grid-cols-3 gap-3"></div>
+                </div>
+            </div>
+
+            <div class="p-6 border-t border-slate-800 flex justify-end gap-3">
+                <button onclick="toggleDetailsModal(false)" class="px-6 py-2 rounded-lg glass hover:bg-slate-800 transition-all font-semibold">Close</button>
+                <button id="btn-edit-trade" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg font-semibold transition-all flex items-center gap-2">
+                    <i data-lucide="edit-3" class="w-4 h-4"></i> Edit Trade
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log New Trade Modal -->
+    <div id="modal-trade" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass w-full max-w-2xl rounded-3xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-6 border-b border-slate-800 flex justify-between items-center">
+                <h3 class="text-xl font-bold">Log New Trade</h3>
+                <button onclick="toggleModal(false)" class="p-2 hover:bg-slate-800 rounded-full transition-all">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <form id="trade-form" class="p-6 overflow-y-auto space-y-6">
+                <input type="hidden" id="trade-id">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Pair -->
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-400">Trading Pair</label>
+                        <select id="pair" class="w-full p-3 rounded-lg outline-none focus:ring-2 ring-blue-500 transition-all" required>
+                            <option value="">Select Pair</option>
+                            <option value="XAU/USD">XAU/USD</option>
+                            <option value="EUR/USD">EUR/USD</option>
+                            <option value="GBP/JPY">GBP/JPY</option>
+                            <option value="GBP/USD">GBP/USD</option>
+                            <option value="USD/JPY">USD/JPY</option>
+                        </select>
+                    </div>
+                    <!-- Trade Type -->
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-400">Trade Type</label>
+                        <select id="trade-type" class="w-full p-3 rounded-lg outline-none focus:ring-2 ring-blue-500 transition-all" required>
+                            <option value="buy">Buy 🔵</option>
+                            <option value="sell">Sell 🔴</option>
+                        </select>
+                    </div>
+
+                    <!-- Outcome -->
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-400">Outcome</label>
+                        <select id="outcome" class="w-full p-3 rounded-lg outline-none focus:ring-2 ring-blue-500 transition-all" required>
+                            <option value="win">Win ✅</option>
+                            <option value="loss">Loss ❌</option>
+                            <option value="breakeven">Break Even ⚪</option>
+                        </select>
+                    </div>
+                    <!-- Bias -->
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-400">Bias</label>
+                        <select id="bias" class="w-full p-3 rounded-lg outline-none focus:ring-2 ring-blue-500 transition-all">
+                            <option value="bullish">Bullish 🐂</option>
+                            <option value="bearish">Bearish 🐻</option>
+                            <option value="neutral">Neutral ⚪</option>
+                        </select>
+                    </div>
+
+                    <!-- RR -->
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-400">Risk:Reward (RR)</label>
+                        <input type="number" step="0.1" id="rr" placeholder="e.g. 3.5" class="w-full p-3 rounded-lg outline-none focus:ring-2 ring-blue-500 transition-all" required>
+                    </div>
+
+                    <!-- PnL % -->
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-400">Profit/Loss %</label>
+                        <input type="number" step="0.01" id="pnl" placeholder="e.g. 2.5 or -1.0" class="w-full p-3 rounded-lg outline-none focus:ring-2 ring-blue-500 transition-all" required>
+                    </div>
+                    <!-- Pips -->
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-400">Pips</label>
+                        <input type="number" step="0.1" id="pips" placeholder="e.g. 20 or -15" class="w-full p-3 rounded-lg outline-none focus:ring-2 ring-blue-500 transition-all">
+                    </div>
+                    <!-- TPs Hit -->
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-400">TPs Hit</label>
+                        <input type="number" id="tps-hit" placeholder="e.g. 2" class="w-full p-3 rounded-lg outline-none focus:ring-2 ring-blue-500 transition-all">
+                    </div>
+                    <!-- Date -->
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-400">Trade Date</label>
+                        <input type="date" id="date" class="w-full p-3 rounded-lg outline-none focus:ring-2 ring-blue-500 transition-all" required>
+                    </div>
+
+                    <!-- Screenshots -->
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium text-slate-400">Screenshots URLs</label>
+                        <div id="screenshot-container" class="space-y-2">
+                            <input type="url" name="screenshot" placeholder="https://imgur.com/..." class="w-full p-3 rounded-lg outline-none focus:ring-2 ring-blue-500 transition-all">
+                        </div>
+                        <button type="button" onclick="addScreenshotInput()" class="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors">
+                            <i data-lucide="plus" class="w-3 h-3"></i> Add Another Screenshot
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Confluences -->
+                <div class="space-y-3">
+                    <label class="text-sm font-medium text-slate-400">Confluences</label>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <label class="flex items-center gap-3 p-3 rounded-lg glass cursor-pointer hover:bg-slate-800 transition-all">
+                            <input type="checkbox" name="confluence" value="liq sweep" class="w-4 h-4 accent-blue-500">
+                            <span class="text-sm">Liq Sweep</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 rounded-lg glass cursor-pointer hover:bg-slate-800 transition-all">
+                            <input type="checkbox" name="confluence" value="fvg" class="w-4 h-4 accent-blue-500">
+                            <span class="text-sm">FVG</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 rounded-lg glass cursor-pointer hover:bg-slate-800 transition-all">
+                            <input type="checkbox" name="confluence" value="bos" class="w-4 h-4 accent-blue-500">
+                            <span class="text-sm">BoS</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 rounded-lg glass cursor-pointer hover:bg-slate-800 transition-all">
+                            <input type="checkbox" name="confluence" value="ob" class="w-4 h-4 accent-blue-500">
+                            <span class="text-sm">OB</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 rounded-lg glass cursor-pointer hover:bg-slate-800 transition-all">
+                            <input type="checkbox" name="confluence" value="eq" class="w-4 h-4 accent-blue-500">
+                            <span class="text-sm">EQ</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 rounded-lg glass cursor-pointer hover:bg-slate-800 transition-all">
+                            <input type="checkbox" name="confluence" value="ifvg" class="w-4 h-4 accent-blue-500">
+                            <span class="text-sm">iFVG</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-slate-400">Notes</label>
+                    <textarea id="notes" rows="3" placeholder="What did you learn from this trade?" class="w-full p-3 rounded-lg outline-none focus:ring-2 ring-blue-500 transition-all"></textarea>
+                </div>
+
+                <!-- Psychology / Feeling -->
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-slate-400">Psychology / Feeling</label>
+                    <textarea id="feeling" rows="3" placeholder="How did you feel during this trade?" class="w-full p-3 rounded-lg outline-none focus:ring-2 ring-blue-500 transition-all"></textarea>
+                </div>
+
+                <div class="pt-4 flex gap-3">
+                    <button type="button" onclick="toggleModal(false)" class="flex-1 px-6 py-3 rounded-lg font-semibold glass hover:bg-slate-800 transition-all">Cancel</button>
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold transition-all" id="btn-save-trade">Save Trade</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
